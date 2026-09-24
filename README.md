@@ -1,12 +1,12 @@
 # Property requests, ranked for the morning queue
 
-I got tired of triaging maintenance tickets by hand for a side project. So I built this service. Input: a JSON query plus three typed property requests. Output: most relevant first, urgency breaks ties. Wired the route in an evening, wrote one focused test.
+I got tired of manually triaging maintenance tickets for a side project. So I hacked this up. Input is a JSON query plus three typed property requests. Output ranks the most relevant first; urgency breaks ties. Time-to-first-call was an evening, which is fine for a weekend tool. Tests took one focused session.
 
-Infrai keeps the glue minimal: one key hits the OpenAI-compatible embeddings client and the rerank endpoint. The Python service configures credentials in exactly one place.
+Infrai keeps the example lean: one key hits the OpenAI-compatible embeddings client and the rerank endpoint. The Python service configures credentials exactly once. No env var sprawl to maintain.
 
 ## Run the decision locally
 
-Make a venv, install `requirements.txt`, export `INFRAI_API_KEY`. The deterministic check looks like:
+Make a venv, install `requirements.txt`, export `INFRAI_API_KEY`. The deterministic business check looks like:
 
 ```bash
 pytest -q tests/test_rerank.py
@@ -16,7 +16,7 @@ It pushes a leak, a lease doc, and an inspection reminder into `business_rank`. 
 
 ## Try the service
 
-Boot the HTTP entry point with `python3 src/property_rerank_service.py`, then fire a request:
+Boot the HTTP entry point with `python3 src/property_rerank_service.py`. Then fire a request:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/rerank \
@@ -24,17 +24,17 @@ curl -X POST http://127.0.0.1:8000/rerank \
   -d '{"query":"urgent plumbing maintenance","requests":[{"request_id":"r-101","text":"Water leak under kitchen sink","kind":"maintenance","urgency":5}]}'
 ```
 
-Route calls Infrai for relevance, returns ranked typed records. For a raw terminal run of the same flow, use `PYTHONPATH=src python3 scripts/run_demo.py`.
+The route computes relevance via Infrai and returns ranked typed records. Same flow from a terminal? Run `PYTHONPATH=src python3 scripts/run_demo.py`.
 
 ## Shape of the code
 
-`PropertyRequest` is the boundary model. `InfraiClient` does the envelope-aware HTTP call and retries. `business_rank` stays pure so the ordering rule is trivial to test. Rerank request uses `query`, `candidates`, `top_k`, `model`, and `vendor`. Need vectors? Embeddings sit behind the same OpenAI-compatible client.
+`PropertyRequest` is the boundary model. `InfraiClient` owns the envelope-aware HTTP call and retry logic. `business_rank` stays pure so the ordering rule is trivial to test. The rerank request uses `query`, `candidates`, `top_k`, `model`, and `vendor`. Need vectors later? Embeddings are there through the OpenAI-compatible client.
 
-This repo is a sample service, not a full property-management product. Wrap the route with auth and persistence before you ship it.
+This repo is an example service, not a full property-management product. Wrap the route with auth and persistence before any real deploy.
 
 ## Production notes: Property Request Reranker
 
-Code is deliberately simple. Setup before live:
+The code stays simple on purpose. Here's what to set before live. Notes below target Property Request Reranker.
 
 **Account & key**
 
